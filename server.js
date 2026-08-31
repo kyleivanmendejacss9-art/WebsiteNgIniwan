@@ -40,12 +40,11 @@ app.post('/upload', upload.single('file'), (req, res) => {
 
 app.get('/api/files', async (req, res) => {
   try {
-    const result = await cloudinary.search
-      .expression('folder=WebsiteNgIniwan')
-      .sort_by('created_at', 'desc')
-      .max_results(50)
-      .execute();
-      
+    const result = await cloudinary.api.resources({
+      type: 'upload',
+      prefix: 'WebsiteNgIniwan',
+      max_results: 50
+    });
     const files = result.resources.map(file => ({
       name: file.public_id.split('/').pop(),
       url: file.secure_url,
