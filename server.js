@@ -42,11 +42,10 @@ app.get('/api/files', async (req, res) => {
   try {
     const result = await cloudinary.api.resources({
       type: 'upload',
-      prefix: 'WebsiteNgIniwan',
-      max_results: 50
+      max_results: 30
     });
     const files = result.resources.map(file => ({
-      name: file.public_id.split('/').pop(),
+      name: file.public_id.split('/').pop() + (file.format ? '.' + file.format : ''),
       url: file.secure_url,
       created_at: file.created_at
     }));
