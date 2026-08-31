@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURORA — Modern Web Hub</title>
+  <style>
+    body { background: #0f0f13; color: #fff; font-family: sans-serif; padding: 20px; margin: 0; }
+    .card { background: #1a1a24; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #2a2a3c; }
+    h2 { font-size: 1.1rem; color: #a78bfa; margin-top: 0; }
+    input, button { background: #2a2a3c; color: #fff; border: 1px solid #3f3f56; padding: 10px; border-radius: 8px; margin-top: 5px; }
+    button { background: #7c3aed; border: none; cursor: pointer; font-weight: bold; }
+    button:hover { background: #6d28d9; }
+    .file-item { display: flex; justify-content: space-between; align-items: center; background: #222230; padding: 10px; margin-top: 8px; border-radius: 6px; }
+    .file-item a { color: #a78bfa; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>⚡ Admin Panel</h2>
+    <form id="uploadForm">
+      <input type="file" id="fileInput" name="file" required><br>
+      <button type="submit">Upload</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>📍 Path: Root /</h2>
+    <div id="fileList">Loading files...</div>
+  </div>
+
+  <script>
+    async function loadFiles() {
+      try {
+        const res = await fetch('/api/files');
+        const files = await res.json();
+        const listDiv = document.getElementById('fileList');
+        
+        if (files.length === 0) {
+          listDiv.innerHTML = 'No files found in Root.';
+          return;
+        }
+
+        listDiv.innerHTML = files.map(file => `
+          <div class="file-item">
+            <a href="${file.url}" target="_blank">${file.name}</a>
+            <small>${new Date(file.created_at).toLocaleDateString()}</small>
+          </div>
+        `).join('');
+      } catch (err) {
+        document.getElementById('fileList').innerHTML = 'Error loading files.';
+      }
+    }
+
+    document.getElementById('uploadForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const formData = new FormData();
+      formData.append('file', document.getElementById('fileInput').files[0]);
+      
+      const res = await fetch('/upload', { method: 'POST', body: formData });
+      if (res.ok) {
+        alert('Upload complete!');
+        loadFiles();
+      } else {
+        alert('Upload failed.');
+      }
+    };
+
+    loadFiles();
+  </script>
+</body>
+</html>
