@@ -13,7 +13,6 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
@@ -35,14 +34,12 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
     const safeName = baseName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now();
 
-    // Upload to Cloudinary with safety timeout catch
     const result = await cloudinary.uploader.upload(req.file.path, {
       folder: 'WebsiteNgIniwan',
       resource_type: 'auto',
       public_id: safeName
     });
 
-    // Clean up local temp file
     if (fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
@@ -63,13 +60,16 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
 app.get('/api/files', async (req, res) => {
   try {
-    const result = await cloudinary.api.resources({
-      type: 'upload',
-      prefix: 'WebsiteNgIniwan/',
-      max_results: 50
-    });
+    // Fetch images, videos, and raw files concurrently so nothing gets hidden
+    const [images, videos, raws] = await Promise.all([
+      cloudinary.api.resources({ type: 'upload', resource_type: 'image', prefix: 'WebsiteNgIniwan/', max_results: 50 }).catch(() => ({ resources: [] })),
+      cloudinary.api.resources({ type: 'upload', resource_type: 'video', prefix: 'WebsiteNgIniwan/', max_results: 50 }).catch(() => ({ resources: [] })),
+      cloudinary.api.resources({ type: 'upload', resource_type: 'raw', prefix: 'WebsiteNgIniwan/', max_results: 50 }).catch(() => ({ resources: [] }))
+    ]);
     
-    const files = result.resources.map(file => {
+    const allResources = [...images.resources, ...videos.resources, ...raws.resources];
+    
+    const files = allResources.map(file => {
       const rawName = file.public_id.split('/').pop();
       const cleanBase = rawName.replace(/_[0-9]+$/, '').replace(/_/g, ' ');
       const displayName = cleanBase + (file.format ? '.' + file.format : '');
@@ -77,7 +77,7 @@ app.get('/api/files', async (req, res) => {
         name: displayName,
         url: file.secure_url,
         created_at: file.created_at,
-        format: file.format
+        format: file.format || file.resource_type
       };
     });
       
