@@ -42,10 +42,10 @@ app.get('/api/files', async (req, res) => {
   try {
     const result = await cloudinary.api.resources({
       type: 'upload',
-      max_results: 30
+      max_results: 50
     });
     const files = result.resources.map(file => ({
-      name: file.public_id.split('/').pop() + (file.format ? '.' + file.format : ''),
+      name: file.public_id.split('/').pop(),
       url: file.secure_url,
       created_at: file.created_at
     }));
