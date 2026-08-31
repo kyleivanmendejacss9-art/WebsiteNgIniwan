@@ -16,8 +16,8 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'WebsiteNgIniwan',
-    resource_type: 'auto',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'pdf', 'mp4', 'webp']
+    resource_type: async (req, file) => 'auto',
+    allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'pdf', 'mp4', 'mov', 'webm', 'webp']
   }
 });
 
@@ -42,6 +42,7 @@ app.get('/api/files', async (req, res) => {
   try {
     const result = await cloudinary.api.resources({
       type: 'upload',
+      prefix: 'WebsiteNgIniwan/',
       max_results: 50
     });
     const files = result.resources.map(file => ({
