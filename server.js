@@ -17,6 +17,7 @@ const storage = new CloudinaryStorage({
   params: {
     folder: 'WebsiteNgIniwan',
     resource_type: async (req, file) => 'auto',
+    public_id: (req, file) => file.originalname.split('.')[0] + '-' + Date.now(),
     allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'pdf', 'mp4', 'mov', 'webm', 'webp']
   }
 });
@@ -45,11 +46,16 @@ app.get('/api/files', async (req, res) => {
       prefix: 'WebsiteNgIniwan/',
       max_results: 50
     });
-    const files = result.resources.map(file => ({
-      name: file.public_id.split('/').pop(),
-      url: file.secure_url,
-      created_at: file.created_at
-    }));
+    const files = result.resources.map(file => {
+      const cleanName = file.public_id.split('/').pop();
+      // Strip out the trailing timestamp we added to make it clean
+      const displayName = cleanName.replace(/-\d+$/, '') + (file.format ? '.' + file.format : '');
+      return {
+        name: displayName,
+        url: file.secure_url,
+        created_at: file.created_at
+      };
+    });
     res.json(files);
   } catch (err) {
     res.status(500).json({ error: err.message });
