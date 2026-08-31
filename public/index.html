@@ -67,6 +67,7 @@
       padding: 24px;
       text-align: center;
       cursor: pointer;
+      display: block;
       transition: border-color 0.2s;
     }
     .upload-zone:hover {
@@ -82,7 +83,6 @@
       padding: 8px 16px;
       border-radius: 8px;
       font-size: 0.9rem;
-      cursor: pointer;
       margin-top: 10px;
     }
     button.submit-btn {
@@ -172,11 +172,11 @@
     <div class="card">
       <h2>📤 Upload Media</h2>
       <form id="uploadForm">
-        <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <label for="fileInput" class="upload-zone">
           <p id="filePrompt" style="margin:0; color:var(--text-muted); font-size:0.9rem;">Tap to select image or video (.mp4, .jpg, etc.)</p>
           <span class="file-label">Browse Files</span>
           <input type="file" id="fileInput" name="file" required>
-        </div>
+        </label>
         <button type="submit" id="uploadBtn" class="submit-btn" disabled>Upload to Vault</button>
       </form>
       <div id="status"></div>
@@ -250,13 +250,14 @@
           statusDiv.innerText = '✅ Upload successful!';
           fileInput.value = '';
           filePrompt.innerText = 'Tap to select image or video (.mp4, .jpg, etc.)';
+          uploadBtn.disabled = true;
           loadFiles();
         } else {
           statusDiv.innerText = '❌ Error: ' + (data.error || 'Upload failed');
+          uploadBtn.disabled = false;
         }
       } catch (err) {
         statusDiv.innerText = '❌ Network error during upload.';
-      } finally {
         uploadBtn.disabled = false;
       }
     };
