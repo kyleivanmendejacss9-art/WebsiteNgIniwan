@@ -1,6 +1,7 @@
 const express = require('express');
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,14 +12,14 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Use memory storage to stream files directly to Cloudinary safely
-const upload = multer({ storage: multer.memoryStorage() });
+// Use temporary disk storage to handle large video files safely without crashing RAM
+const upload = multer({ dest: 'uploads/' });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-app.post('/upload', upload.single('file'), (req, res) => {
+app.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -27,22 +28,23 @@ app.post('/upload', upload.single('file'), (req, res) => {
     const originalName = req.file.originalname;
     const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
 
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: 'WebsiteNgIniwan',
-        resource_type: 'auto', // Automatically detects images, videos, or documents
-        public_id: baseName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now()
-      },
-      (error, result) => {
-        if (error) {
-          return res.status(500).json({ error: error.message });
-        }
-        res.json({ message: 'Upload complete', url: result.secure_url, public_id: result.public_id });
-      }
-    );
+    // Upload the temporary file from disk to Cloudinary with auto-detection for videos/images
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'WebsiteNgIniwan',
+      resource_type: 'auto',
+      public_id: baseName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now()
+    });
 
-    uploadStream.end(req.file.buffer);
+    // Delete the local temporary file
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.json({ message: 'Upload complete', url: result.secure_url, public_id: result.public_id });
   } catch (err) {
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
     res.status(500).json({ error: err.message });
   }
 });
