@@ -8,11 +8,12 @@
     body { background: #0f0f13; color: #fff; font-family: sans-serif; padding: 20px; margin: 0; }
     .card { background: #1a1a24; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #2a2a3c; }
     h2 { font-size: 1.1rem; color: #a78bfa; margin-top: 0; }
-    input, button { background: #2a2a3c; color: #fff; border: 1px solid #3f3f56; padding: 10px; border-radius: 8px; margin-top: 5px; }
+    input, button { background: #2a2a3c; color: #fff; border: 1px solid #3f3f56; padding: 10px; border-radius: 8px; margin-top: 5px; width: 100%; box-sizing: border-box; }
     button { background: #7c3aed; border: none; cursor: pointer; font-weight: bold; }
     button:hover { background: #6d28d9; }
     .file-item { display: flex; justify-content: space-between; align-items: center; background: #222230; padding: 10px; margin-top: 8px; border-radius: 6px; }
-    .file-item a { color: #a78bfa; text-decoration: none; }
+    .file-item a { color: #a78bfa; text-decoration: none; word-break: break-all; }
+    #status { margin-top: 10px; font-size: 0.9rem; color: #38bdf8; }
   </style>
 </head>
 <body>
@@ -20,8 +21,9 @@
     <h2>⚡ Admin Panel</h2>
     <form id="uploadForm">
       <input type="file" id="fileInput" name="file" required><br>
-      <button type="submit">Upload</button>
+      <button type="submit" id="uploadBtn">Upload</button>
     </form>
+    <div id="status"></div>
   </div>
 
   <div class="card">
@@ -36,7 +38,7 @@
         const files = await res.json();
         const listDiv = document.getElementById('fileList');
         
-        if (files.length === 0) {
+        if (!Array.isArray(files) || files.length === 0) {
           listDiv.innerHTML = 'No files found in Root.';
           return;
         }
@@ -54,15 +56,32 @@
 
     document.getElementById('uploadForm').onsubmit = async (e) => {
       e.preventDefault();
+      const fileInput = document.getElementById('fileInput');
+      if (!fileInput.files[0]) return;
+
       const formData = new FormData();
-      formData.append('file', document.getElementById('fileInput').files[0]);
+      formData.append('file', fileInput.files[0]);
       
-      const res = await fetch('/upload', { method: 'POST', body: formData });
-      if (res.ok) {
-        alert('Upload complete!');
-        loadFiles();
-      } else {
-        alert('Upload failed.');
+      const statusDiv = document.getElementById('status');
+      const uploadBtn = document.getElementById('uploadBtn');
+      statusDiv.innerText = 'Uploading to Cloudinary...';
+      uploadBtn.disabled = true;
+
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if (res.ok) {
+          statusDiv.innerText = 'Upload complete!';
+          fileInput.value = '';
+          loadFiles();
+        } else {
+          statusDiv.innerText = 'Upload failed: ' + (data.error || 'Unknown error');
+        }
+      } catch (err) {
+        statusDiv.innerText = 'Upload failed due to network error.';
+      } finally {
+        uploadBtn.disabled = false;
       }
     };
 
