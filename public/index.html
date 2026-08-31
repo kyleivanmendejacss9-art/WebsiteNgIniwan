@@ -213,7 +213,7 @@
         }
 
         listDiv.innerHTML = files.map(file => {
-          const isVid = ['mp4', 'mov', 'webm'].includes(file.format);
+          const isVid = ['mp4', 'mov', 'webm', 'video'].includes(file.format);
           const thumb = isVid ? 'https://api.iconify.design/lucide:file-video.svg?color=%23c084fc' : file.url;
           return `
             <div class="file-item">
@@ -247,11 +247,15 @@
         const data = await res.json();
         
         if (res.ok && data.success) {
-          statusDiv.innerText = '✅ Upload successful!';
+          statusDiv.innerText = '✅ Upload successful! Updating vault...';
           fileInput.value = '';
           filePrompt.innerText = 'Tap to select image or video (.mp4, .jpg, etc.)';
-          uploadBtn.disabled = true;
-          loadFiles();
+          
+          // Wait 1.5 seconds for Cloudinary search index to catch up, then reload
+          setTimeout(() => {
+            loadFiles();
+            statusDiv.innerText = '✅ Upload complete & added to vault!';
+          }, 1500);
         } else {
           statusDiv.innerText = '❌ Error: ' + (data.error || 'Upload failed');
           uploadBtn.disabled = false;

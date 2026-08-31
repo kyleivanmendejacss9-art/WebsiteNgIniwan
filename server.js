@@ -37,7 +37,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     const result = await cloudinary.uploader.upload(req.file.path, {
       folder: 'WebsiteNgIniwan',
       resource_type: 'auto',
-      public_id: safeName
+      public_id: safeName,
+      chunk_size: 6000000 // Enable chunking for smooth video uploads
     });
 
     if (fs.existsSync(req.file.path)) {
@@ -60,16 +61,14 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
 app.get('/api/files', async (req, res) => {
   try {
-    // Fetch images, videos, and raw files concurrently so nothing gets hidden
-    const [images, videos, raws] = await Promise.all([
-      cloudinary.api.resources({ type: 'upload', resource_type: 'image', prefix: 'WebsiteNgIniwan/', max_results: 50 }).catch(() => ({ resources: [] })),
-      cloudinary.api.resources({ type: 'upload', resource_type: 'video', prefix: 'WebsiteNgIniwan/', max_results: 50 }).catch(() => ({ resources: [] })),
-      cloudinary.api.resources({ type: 'upload', resource_type: 'raw', prefix: 'WebsiteNgIniwan/', max_results: 50 }).catch(() => ({ resources: [] }))
-    ]);
+    // Use Cloudinary Search API to fetch all files across all types instantly
+    const searchResult = await cloudinary.search
+      .expression('folder:WebsiteNgIniwan')
+      .sort_by('created_at', 'desc')
+      .max_results(50)
+      .execute();
     
-    const allResources = [...images.resources, ...videos.resources, ...raws.resources];
-    
-    const files = allResources.map(file => {
+    const files = searchResult.resources.map(file => {
       const rawName = file.public_id.split('/').pop();
       const cleanBase = rawName.replace(/_[0-9]+$/, '').replace(/_/g, ' ');
       const displayName = cleanBase + (file.format ? '.' + file.format : '');
