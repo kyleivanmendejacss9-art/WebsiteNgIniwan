@@ -3,35 +3,204 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AURORA — Modern Web Hub</title>
+  <title>AURORA — Cloud Media Vault</title>
   <style>
-    body { background: #0f0f13; color: #fff; font-family: sans-serif; padding: 20px; margin: 0; }
-    .card { background: #1a1a24; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #2a2a3c; }
-    h2 { font-size: 1.1rem; color: #a78bfa; margin-top: 0; }
-    input, button { background: #2a2a3c; color: #fff; border: 1px solid #3f3f56; padding: 10px; border-radius: 8px; margin-top: 5px; width: 100%; box-sizing: border-box; }
-    button { background: #7c3aed; border: none; cursor: pointer; font-weight: bold; }
-    button:hover { background: #6d28d9; }
-    .file-item { display: flex; justify-content: space-between; align-items: center; background: #222230; padding: 10px; margin-top: 8px; border-radius: 6px; }
-    .file-item a { color: #a78bfa; text-decoration: none; word-break: break-all; }
-    #status { margin-top: 10px; font-size: 0.9rem; color: #38bdf8; }
+    :root {
+      --bg: #09090b;
+      --card-bg: #121217;
+      --border: #27272a;
+      --accent: #8b5cf6;
+      --accent-hover: #7c3aed;
+      --text: #f4f4f5;
+      --text-muted: #a1a1aa;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      background: linear-gradient(to right, #c084fc, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 6px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      margin-top: 0;
+      margin-bottom: 14px;
+      color: #e4e4e7;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .upload-zone:hover {
+      border-color: var(--accent);
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .file-label {
+      display: inline-block;
+      background: var(--border);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button.submit-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 14px;
+      transition: background 0.2s;
+    }
+    button.submit-btn:hover {
+      background: var(--accent-hover);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 12px;
+      font-size: 0.85rem;
+      text-align: center;
+      color: #38bdf8;
+      font-weight: 500;
+    }
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #18181b;
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 10px;
+    }
+    .file-info {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      margin-right: 10px;
+    }
+    .file-item a {
+      color: #c084fc;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 320px;
+    }
+    .file-item a:hover {
+      text-decoration: underline;
+    }
+    .file-item small {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 3px;
+    }
+    .preview-thumb {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #27272a;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>⚡ Admin Panel</h2>
-    <form id="uploadForm">
-      <input type="file" id="fileInput" name="file" required><br>
-      <button type="submit" id="uploadBtn">Upload</button>
-    </form>
-    <div id="status"></div>
-  </div>
+  <div class="container">
+    <header>
+      <h1>AURORA Vault</h1>
+      <p>Secure Cloud Storage for Images & Videos</p>
+    </header>
 
-  <div class="card">
-    <h2>📍 Path: Root /</h2>
-    <div id="fileList">Loading files...</div>
+    <div class="card">
+      <h2>📤 Upload Media</h2>
+      <form id="uploadForm">
+        <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+          <p id="filePrompt" style="margin:0; color:var(--text-muted); font-size:0.9rem;">Tap to select image or video (.mp4, .jpg, etc.)</p>
+          <span class="file-label">Browse Files</span>
+          <input type="file" id="fileInput" name="file" required>
+        </div>
+        <button type="submit" id="uploadBtn" class="submit-btn" disabled>Upload to Vault</button>
+      </form>
+      <div id="status"></div>
+    </div>
+
+    <div class="card">
+      <h2>🗂️ Vault Files (Root /)</h2>
+      <div id="fileList" class="file-list">Loading vault contents...</div>
+    </div>
   </div>
 
   <script>
+    const fileInput = document.getElementById('fileInput');
+    const filePrompt = document.getElementById('filePrompt');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const statusDiv = document.getElementById('status');
+
+    fileInput.onchange = () => {
+      if (fileInput.files[0]) {
+        filePrompt.innerText = 'Selected: ' + fileInput.files[0].name;
+        uploadBtn.disabled = false;
+      }
+    };
+
     async function loadFiles() {
       try {
         const res = await fetch('/api/files');
@@ -39,47 +208,54 @@
         const listDiv = document.getElementById('fileList');
         
         if (!Array.isArray(files) || files.length === 0) {
-          listDiv.innerHTML = 'No files found in Root.';
+          listDiv.innerHTML = '<p style="color:var(--text-muted); text-align:center; margin:10px 0;">Vault is empty.</p>';
           return;
         }
 
-        listDiv.innerHTML = files.map(file => `
-          <div class="file-item">
-            <a href="${file.url}" target="_blank">${file.name}</a>
-            <small>${new Date(file.created_at).toLocaleDateString()}</small>
-          </div>
-        `).join('');
+        listDiv.innerHTML = files.map(file => {
+          const isVid = ['mp4', 'mov', 'webm'].includes(file.format);
+          const thumb = isVid ? 'https://api.iconify.design/lucide:file-video.svg?color=%23c084fc' : file.url;
+          return `
+            <div class="file-item">
+              <div style="display:flex; align-items:center; gap:12px; overflow:hidden;">
+                <img src="${thumb}" class="preview-thumb" alt="thumb">
+                <div class="file-info">
+                  <a href="${file.url}" target="_blank">${file.name}</a>
+                  <small>${new Date(file.created_at).toLocaleDateString()}</small>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
       } catch (err) {
-        document.getElementById('fileList').innerHTML = 'Error loading files.';
+        document.getElementById('fileList').innerHTML = '<p style="color:#ef4444; text-align:center;">Failed to load vault files.</p>';
       }
     }
 
     document.getElementById('uploadForm').onsubmit = async (e) => {
       e.preventDefault();
-      const fileInput = document.getElementById('fileInput');
       if (!fileInput.files[0]) return;
 
       const formData = new FormData();
       formData.append('file', fileInput.files[0]);
       
-      const statusDiv = document.getElementById('status');
-      const uploadBtn = document.getElementById('uploadBtn');
-      statusDiv.innerText = 'Uploading to Cloudinary...';
+      statusDiv.innerText = 'Uploading... Please keep page open.';
       uploadBtn.disabled = true;
 
       try {
         const res = await fetch('/upload', { method: 'POST', body: formData });
         const data = await res.json();
         
-        if (res.ok) {
-          statusDiv.innerText = 'Upload complete!';
+        if (res.ok && data.success) {
+          statusDiv.innerText = '✅ Upload successful!';
           fileInput.value = '';
+          filePrompt.innerText = 'Tap to select image or video (.mp4, .jpg, etc.)';
           loadFiles();
         } else {
-          statusDiv.innerText = 'Upload failed: ' + (data.error || 'Unknown error');
+          statusDiv.innerText = '❌ Error: ' + (data.error || 'Upload failed');
         }
       } catch (err) {
-        statusDiv.innerText = 'Upload failed due to network error.';
+        statusDiv.innerText = '❌ Network error during upload.';
       } finally {
         uploadBtn.disabled = false;
       }

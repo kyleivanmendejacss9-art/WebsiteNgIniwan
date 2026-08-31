@@ -2,6 +2,7 @@ const express = require('express');
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,8 +13,13 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Use temporary disk storage to handle large video files safely without crashing RAM
-const upload = multer({ dest: 'uploads/' });
+// Ensure uploads directory exists
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+const upload = multer({ dest: uploadDir });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -22,30 +28,36 @@ app.use(express.static('public'));
 app.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({ error: 'No file selected for upload.' });
     }
 
     const originalName = req.file.originalname;
     const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+    const safeName = baseName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now();
 
-    // Upload the temporary file from disk to Cloudinary with auto-detection for videos/images
+    // Upload to Cloudinary with safety timeout catch
     const result = await cloudinary.uploader.upload(req.file.path, {
       folder: 'WebsiteNgIniwan',
       resource_type: 'auto',
-      public_id: baseName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now()
+      public_id: safeName
     });
 
-    // Delete the local temporary file
+    // Clean up local temp file
     if (fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
 
-    res.json({ message: 'Upload complete', url: result.secure_url, public_id: result.public_id });
+    res.json({ 
+      success: true, 
+      message: 'Upload complete!', 
+      url: result.secure_url,
+      name: originalName
+    });
   } catch (err) {
     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message || 'Upload failed due to server error.' });
   }
 });
 
@@ -64,7 +76,8 @@ app.get('/api/files', async (req, res) => {
       return {
         name: displayName,
         url: file.secure_url,
-        created_at: file.created_at
+        created_at: file.created_at,
+        format: file.format
       };
     });
       
