@@ -1,6 +1,5 @@
 const express = require('express');
 const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 
 const app = express();
@@ -12,17 +11,8 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'WebsiteNgIniwan',
-    resource_type: async (req, file) => 'auto',
-    public_id: (req, file) => file.originalname.split('.')[0] + '-' + Date.now(),
-    allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'pdf', 'mp4', 'mov', 'webm', 'webp']
-  }
-});
-
-const upload = multer({ storage: storage });
+// Use memory storage to stream files directly to Cloudinary safely
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -33,7 +23,25 @@ app.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    res.json({ message: 'Upload complete', url: req.file.path, public_id: req.file.filename });
+
+    const originalName = req.file.originalname;
+    const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'WebsiteNgIniwan',
+        resource_type: 'auto', // Automatically detects images, videos, or documents
+        public_id: baseName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now()
+      },
+      (error, result) => {
+        if (error) {
+          return res.status(500).json({ error: error.message });
+        }
+        res.json({ message: 'Upload complete', url: result.secure_url, public_id: result.public_id });
+      }
+    );
+
+    uploadStream.end(req.file.buffer);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -46,16 +54,18 @@ app.get('/api/files', async (req, res) => {
       prefix: 'WebsiteNgIniwan/',
       max_results: 50
     });
+    
     const files = result.resources.map(file => {
-      const cleanName = file.public_id.split('/').pop();
-      // Strip out the trailing timestamp we added to make it clean
-      const displayName = cleanName.replace(/-\d+$/, '') + (file.format ? '.' + file.format : '');
+      const rawName = file.public_id.split('/').pop();
+      const cleanBase = rawName.replace(/_[0-9]+$/, '').replace(/_/g, ' ');
+      const displayName = cleanBase + (file.format ? '.' + file.format : '');
       return {
         name: displayName,
         url: file.secure_url,
         created_at: file.created_at
       };
     });
+      
     res.json(files);
   } catch (err) {
     res.status(500).json({ error: err.message });
