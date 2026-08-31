@@ -193,6 +193,7 @@
     const filePrompt = document.getElementById('filePrompt');
     const uploadBtn = document.getElementById('uploadBtn');
     const statusDiv = document.getElementById('status');
+    let localFiles = [];
 
     fileInput.onchange = () => {
       if (fileInput.files[0]) {
@@ -201,32 +202,38 @@
       }
     };
 
+    function renderFiles(files) {
+      const listDiv = document.getElementById('fileList');
+      if (!Array.isArray(files) || files.length === 0) {
+        listDiv.innerHTML = '<p style="color:var(--text-muted); text-align:center; margin:10px 0;">Vault is empty.</p>';
+        return;
+      }
+
+      listDiv.innerHTML = files.map(file => {
+        const isVid = ['mp4', 'mov', 'webm', 'video'].includes(file.format);
+        const thumb = isVid ? 'https://api.iconify.design/lucide:file-video.svg?color=%23c084fc' : file.url;
+        return `
+          <div class="file-item">
+            <div style="display:flex; align-items:center; gap:12px; overflow:hidden;">
+              <img src="${thumb}" class="preview-thumb" alt="thumb">
+              <div class="file-info">
+                <a href="${file.url}" target="_blank">${file.name}</a>
+                <small>${new Date(file.created_at).toLocaleDateString()}</small>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
     async function loadFiles() {
       try {
         const res = await fetch('/api/files');
         const files = await res.json();
-        const listDiv = document.getElementById('fileList');
-        
-        if (!Array.isArray(files) || files.length === 0) {
-          listDiv.innerHTML = '<p style="color:var(--text-muted); text-align:center; margin:10px 0;">Vault is empty.</p>';
-          return;
+        if (Array.isArray(files)) {
+          localFiles = files;
+          renderFiles(localFiles);
         }
-
-        listDiv.innerHTML = files.map(file => {
-          const isVid = ['mp4', 'mov', 'webm', 'video'].includes(file.format);
-          const thumb = isVid ? 'https://api.iconify.design/lucide:file-video.svg?color=%23c084fc' : file.url;
-          return `
-            <div class="file-item">
-              <div style="display:flex; align-items:center; gap:12px; overflow:hidden;">
-                <img src="${thumb}" class="preview-thumb" alt="thumb">
-                <div class="file-info">
-                  <a href="${file.url}" target="_blank">${file.name}</a>
-                  <small>${new Date(file.created_at).toLocaleDateString()}</small>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('');
       } catch (err) {
         document.getElementById('fileList').innerHTML = '<p style="color:#ef4444; text-align:center;">Failed to load vault files.</p>';
       }
@@ -247,15 +254,18 @@
         const data = await res.json();
         
         if (res.ok && data.success) {
-          statusDiv.innerText = '✅ Upload successful! Updating vault...';
+          statusDiv.innerText = '✅ Upload successful! Added to vault.';
           fileInput.value = '';
           filePrompt.innerText = 'Tap to select image or video (.mp4, .jpg, etc.)';
           
-          // Wait 1.5 seconds for Cloudinary search index to catch up, then reload
-          setTimeout(() => {
-            loadFiles();
-            statusDiv.innerText = '✅ Upload complete & added to vault!';
-          }, 1500);
+          // Instantly prepend to list so it shows up right away without waiting
+          localFiles.unshift({
+            name: data.name,
+            url: data.url,
+            created_at: data.created_at,
+            format: data.format
+          });
+          renderFiles(localFiles);
         } else {
           statusDiv.innerText = '❌ Error: ' + (data.error || 'Upload failed');
           uploadBtn.disabled = false;

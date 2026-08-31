@@ -43,7 +43,9 @@ app.post('/upload', upload.single('file'), async (req, res) => {
       success: true, 
       message: 'Upload complete!', 
       url: result.secure_url,
-      name: req.file.originalname
+      name: req.file.originalname,
+      created_at: new Date().toISOString(),
+      format: result.format || result.resource_type
     });
   } catch (err) {
     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
@@ -55,23 +57,17 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
 app.get('/api/files', async (req, res) => {
   try {
-    // Fetch from all resource types supported on free tier using reliable Admin API
     const [images, videos, raws] = await Promise.all([
-      cloudinary.api.resources({ type: 'upload', resource_type: 'image', max_results: 100 }).catch(() => ({ resources: [] })),
-      cloudinary.api.resources({ type: 'upload', resource_type: 'video', max_results: 100 }).catch(() => ({ resources: [] })),
-      cloudinary.api.resources({ type: 'upload', resource_type: 'raw', max_results: 100 }).catch(() => ({ resources: [] }))
+      cloudinary.api.resources({ type: 'upload', resource_type: 'image', prefix: 'WebsiteNgIniwan/', max_results: 100 }).catch(() => ({ resources: [] })),
+      cloudinary.api.resources({ type: 'upload', resource_type: 'video', prefix: 'WebsiteNgIniwan/', max_results: 100 }).catch(() => ({ resources: [] })),
+      cloudinary.api.resources({ type: 'upload', resource_type: 'raw', prefix: 'WebsiteNgIniwan/', max_results: 100 }).catch(() => ({ resources: [] }))
     ]);
 
     const allResources = [...images.resources, ...videos.resources, ...raws.resources];
     
-    // Filter strictly for files inside the WebsiteNgIniwan folder
-    const vaultFiles = allResources.filter(file => 
-      file.folder === 'WebsiteNgIniwan' || file.public_id.startsWith('WebsiteNgIniwan/')
-    );
-
-    const files = vaultFiles.map(file => {
+    const files = allResources.map(file => {
       const rawName = file.public_id.split('/').pop();
-      const displayName = rawName + (file.format ? '.' + file.format : '');
+      const displayName = rawName.replace(/_[0-9]+$/, '').replace(/_/g, ' ') + (file.format ? '.' + file.format : '');
       return {
         name: displayName,
         url: file.secure_url,
@@ -80,9 +76,7 @@ app.get('/api/files', async (req, res) => {
       };
     });
 
-    // Sort newest first
     files.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
     res.json(files);
   } catch (err) {
     res.status(500).json({ error: err.message });
